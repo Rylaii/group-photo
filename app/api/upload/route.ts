@@ -1,6 +1,5 @@
-import { put, list } from '@vercel/blob'
+import { put } from '@vercel/blob'
 import { NextRequest, NextResponse } from 'next/server'
-import { v4 as uuidv4 } from 'uuid'
 
 export async function POST(request: NextRequest) {
   try {
@@ -12,14 +11,12 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Missing file or group' }, { status: 400 })
     }
 
-    const id = uuidv4()
+    const id = crypto.randomUUID()
     const ext = file.name.split('.').pop() || 'jpg'
     const filename = `photos/${id}.${ext}`
 
-    // Upload image
     const blob = await put(filename, file, { access: 'public' })
 
-    // Store metadata as a small JSON blob
     const meta = {
       id,
       group,

@@ -11,12 +11,14 @@ interface Entry {
 
 type Tab = 'upload' | 'gallery' | 'generate'
 
+const R = '10px'
+const RS = '6px'
+
 export default function Home() {
   const [tab, setTab] = useState<Tab>('upload')
   const [entries, setEntries] = useState<Entry[]>([])
   const [loadingEntries, setLoadingEntries] = useState(false)
 
-  // Upload state
   const [file, setFile] = useState<File | null>(null)
   const [preview, setPreview] = useState<string | null>(null)
   const [group, setGroup] = useState('')
@@ -25,7 +27,6 @@ export default function Home() {
   const [dragOver, setDragOver] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
-  // Generate state
   const [generating, setGenerating] = useState(false)
   const [genMsg, setGenMsg] = useState('')
 
@@ -93,20 +94,18 @@ export default function Home() {
     setGenerating(true)
     setGenMsg('Loading library…')
 
-    // Dynamically import pptxgenjs
     const PptxGenJS = (await import('pptxgenjs')).default
     const pptx = new PptxGenJS()
     pptx.layout = 'LAYOUT_WIDE'
 
     setGenMsg('Fetching images…')
     for (const entry of entries) {
-      // Convert image URL to base64
       let imgData: string
       try {
         const res = await fetch(entry.imageUrl)
         const buf = await res.arrayBuffer()
         const b64 = btoa(String.fromCharCode(...new Uint8Array(buf)))
-        const mime = entry.imageUrl.match(/\.(png)$/i) ? 'image/png' : 'image/jpeg'
+        const mime = entry.imageUrl.match(/\.png$/i) ? 'image/png' : 'image/jpeg'
         imgData = `data:${mime};base64,${b64}`
       } catch {
         imgData = entry.imageUrl
@@ -115,7 +114,6 @@ export default function Home() {
       const slide = pptx.addSlide()
       slide.background = { color: 'F7F7F6' }
 
-      // Header bar
       slide.addShape('rect' as any, {
         x: 0, y: 0, w: 13.33, h: 0.72,
         fill: { color: '1D3461' },
@@ -128,14 +126,12 @@ export default function Home() {
         valign: 'middle',
       })
 
-      // Photo
       slide.addImage({
         data: imgData,
         x: 1.2, y: 0.9, w: 10.93, h: 5.5,
         sizing: { type: 'contain', w: 10.93, h: 5.5 },
       })
 
-      // Footer
       const d = new Date(entry.date).toLocaleDateString('en-US', {
         year: 'numeric', month: 'long', day: 'numeric',
       })
@@ -151,9 +147,10 @@ export default function Home() {
     setGenerating(false)
   }
 
+  const canSave = !!file && !!group.trim() && !saving
+
   return (
     <div style={{ maxWidth: 720, margin: '0 auto', padding: '2rem 1rem' }}>
-      {/* Header */}
       <div style={{ marginBottom: '2rem' }}>
         <h1 style={{ fontSize: 22, fontWeight: 700, color: '#1d3461', letterSpacing: '-0.3px' }}>
           📸 Group Photo Uploader
@@ -164,7 +161,7 @@ export default function Home() {
       </div>
 
       {/* Tabs */}
-      <div style={{ display: 'flex', borderBottom: '1.5px solid var(--border)', marginBottom: '1.5rem', gap: 0 }}>
+      <div style={{ display: 'flex', borderBottom: '1.5px solid #e5e5e3', marginBottom: '1.5rem' }}>
         {(['upload', 'gallery', 'generate'] as Tab[]).map(t => (
           <button
             key={t}
@@ -176,11 +173,10 @@ export default function Home() {
               color: tab === t ? '#1d3461' : '#6b6a67',
               background: 'none',
               border: 'none',
-              borderBottom: tab === t ? '2px solid #1d3461' : '2px solid transparent',
+              borderBottom: tab === t ? '2.5px solid #1d3461' : '2.5px solid transparent',
               cursor: 'pointer',
-              textTransform: 'capitalize',
-              transition: 'all 0.15s',
               marginBottom: -1.5,
+              transition: 'all 0.15s',
             }}
           >
             {t === 'upload' ? '⬆ Upload' : t === 'gallery' ? `🖼 Gallery (${entries.length})` : '📊 Generate'}
@@ -202,7 +198,7 @@ export default function Home() {
             }}
             style={{
               border: `2px dashed ${dragOver ? '#1d3461' : '#d1d0cd'}`,
-              borderRadius: var_radius,
+              borderRadius: R,
               padding: '2.5rem',
               textAlign: 'center',
               cursor: 'pointer',
@@ -211,14 +207,19 @@ export default function Home() {
             }}
           >
             <div style={{ fontSize: 40, marginBottom: 8 }}>📁</div>
-            <p style={{ fontWeight: 600, fontSize: 15 }}>Click to upload or drag & drop</p>
+            <p style={{ fontWeight: 600, fontSize: 15 }}>Click to upload or drag &amp; drop</p>
             <p style={{ color: '#6b6a67', fontSize: 13, marginTop: 4 }}>PNG, JPG, WEBP supported</p>
           </div>
-          <input ref={fileInputRef} type="file" accept="image/*" style={{ display: 'none' }}
-            onChange={e => { const f = e.target.files?.[0]; if (f) handleFile(f) }} />
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            style={{ display: 'none' }}
+            onChange={e => { const f = e.target.files?.[0]; if (f) handleFile(f) }}
+          />
 
           {preview && (
-            <div style={{ position: 'relative', borderRadius: var_radius, overflow: 'hidden', border: '1px solid var(--border)' }}>
+            <div style={{ position: 'relative', borderRadius: R, overflow: 'hidden', border: '1px solid #e5e5e3' }}>
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={preview} alt="Preview" style={{ width: '100%', maxHeight: 260, objectFit: 'contain', display: 'block', background: '#f0f0ef' }} />
               <button
@@ -228,7 +229,7 @@ export default function Home() {
             </div>
           )}
 
-          <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: var_radius, padding: '1rem' }}>
+          <div style={{ background: '#fff', border: '1px solid #e5e5e3', borderRadius: R, padding: '1rem' }}>
             <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#6b6a67', marginBottom: 6 }}>
               GROUP NUMBER / IDENTIFIER
             </label>
@@ -238,23 +239,25 @@ export default function Home() {
               onChange={e => setGroup(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && handleSave()}
               placeholder="e.g. Group 3, Section A, Team Alpha"
-              style={{ width: '100%', padding: '10px 12px', border: '1px solid var(--border)', borderRadius: var_radius_sm, fontSize: 15, outline: 'none' }}
+              style={{ width: '100%', padding: '10px 12px', border: '1px solid #e5e5e3', borderRadius: RS, fontSize: 15, outline: 'none', fontFamily: 'inherit' }}
             />
           </div>
 
           <button
             onClick={handleSave}
-            disabled={!file || !group.trim() || saving}
+            disabled={!canSave}
             style={{
               width: '100%', padding: '12px', fontSize: 15, fontWeight: 600,
-              background: (!file || !group.trim() || saving) ? '#e5e5e3' : '#1d3461',
-              color: (!file || !group.trim() || saving) ? '#999' : '#fff',
-              border: 'none', borderRadius: var_radius, cursor: (!file || !group.trim() || saving) ? 'not-allowed' : 'pointer',
+              background: canSave ? '#1d3461' : '#e5e5e3',
+              color: canSave ? '#fff' : '#999',
+              border: 'none', borderRadius: R,
+              cursor: canSave ? 'pointer' : 'not-allowed',
               transition: 'all 0.15s',
             }}
           >
             {saving ? 'Saving…' : '💾 Save to database'}
           </button>
+
           {saveMsg && (
             <p style={{ textAlign: 'center', color: saveMsg.includes('failed') ? '#dc2626' : '#16a34a', fontSize: 14, fontWeight: 500 }}>
               {saveMsg}
@@ -271,12 +274,12 @@ export default function Home() {
           ) : entries.length === 0 ? (
             <div style={{ textAlign: 'center', padding: '4rem 1rem', color: '#6b6a67' }}>
               <div style={{ fontSize: 48, marginBottom: 12 }}>🖼</div>
-              <p style={{ fontSize: 15 }}>No entries yet. Upload some group photos!</p>
+              <p>No entries yet. Upload some group photos!</p>
             </div>
           ) : (
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 14 }}>
               {entries.map(entry => (
-                <div key={entry.id} style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: var_radius, overflow: 'hidden', position: 'relative' }}>
+                <div key={entry.id} style={{ background: '#fff', border: '1px solid #e5e5e3', borderRadius: R, overflow: 'hidden', position: 'relative' }}>
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src={entry.imageUrl} alt={entry.group} style={{ width: '100%', height: 130, objectFit: 'cover', display: 'block' }} />
                   <button
@@ -302,11 +305,11 @@ export default function Home() {
       {/* Generate Panel */}
       {tab === 'generate' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-          <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: var_radius, padding: '1.25rem' }}>
+          <div style={{ background: '#fff', border: '1px solid #e5e5e3', borderRadius: R, padding: '1.25rem' }}>
             <p style={{ fontSize: 14, color: '#6b6a67', marginBottom: 12 }}>
               Compile all saved group photos into a PowerPoint file — one slide per entry with the group label and image.
             </p>
-            <div style={{ background: '#f5f5f4', borderRadius: var_radius_sm, padding: '10px 14px', fontSize: 13, color: '#6b6a67' }}>
+            <div style={{ background: '#f5f5f4', borderRadius: RS, padding: '10px 14px', fontSize: 13, color: '#6b6a67' }}>
               {entries.length === 0
                 ? 'ℹ No entries saved yet.'
                 : `📋 ${entries.length} entr${entries.length === 1 ? 'y' : 'ies'} ready: ${[...new Set(entries.map(e => e.group))].join(', ')}`
@@ -319,9 +322,10 @@ export default function Home() {
             disabled={entries.length === 0 || generating}
             style={{
               width: '100%', padding: '13px', fontSize: 15, fontWeight: 600,
-              background: (entries.length === 0 || generating) ? '#e5e5e3' : '#1d3461',
-              color: (entries.length === 0 || generating) ? '#999' : '#fff',
-              border: 'none', borderRadius: var_radius, cursor: (entries.length === 0 || generating) ? 'not-allowed' : 'pointer',
+              background: entries.length > 0 && !generating ? '#1d3461' : '#e5e5e3',
+              color: entries.length > 0 && !generating ? '#fff' : '#999',
+              border: 'none', borderRadius: R,
+              cursor: entries.length > 0 && !generating ? 'pointer' : 'not-allowed',
               transition: 'all 0.15s',
             }}
           >
@@ -338,6 +342,3 @@ export default function Home() {
     </div>
   )
 }
-
-const var_radius = 10
-const var_radius_sm = 6
