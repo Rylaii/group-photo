@@ -104,7 +104,8 @@ export default function Home() {
       try {
         const res = await fetch(entry.imageUrl)
         const buf = await res.arrayBuffer()
-        const b64 = btoa(String.fromCharCode(...new Uint8Array(buf)))
+        const bytes = new Uint8Array(buf)
+        const b64 = btoa(Array.from(bytes, b => String.fromCharCode(b)).join(''))
         const mime = entry.imageUrl.match(/\.png$/i) ? 'image/png' : 'image/jpeg'
         imgData = `data:${mime};base64,${b64}`
       } catch {
