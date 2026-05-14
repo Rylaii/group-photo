@@ -96,59 +96,172 @@ export default function Home() {
 
     const PptxGenJS = (await import('pptxgenjs')).default
     const pptx = new PptxGenJS()
-    pptx.layout = 'LAYOUT_WIDE'
+    pptx.layout = 'LAYOUT_WIDE' // 13.33 x 7.5
 
-    setGenMsg('Fetching images…')
+    // Helper: fetch image URL -> base64 data URI
+    async function toDataUri(url: string): Promise<string> {
+      const res = await fetch(url)
+      const buf = await res.arrayBuffer()
+      const bytes = new Uint8Array(buf)
+      const b64 = btoa(Array.from(bytes, b => String.fromCharCode(b)).join(''))
+      const mime = url.match(/\.png$/i) ? 'image/png' : 'image/jpeg'
+      return `data:${mime};base64,${b64}`
+    }
+
+    // Load the poster (served from /public)
+    setGenMsg('Loading poster…')
+    let posterData: string | null = null
+    try {
+      posterData = await toDataUri('/groufie-poster.png')
+    } catch { posterData = null }
+
+    // ── SLIDE 1: Cover using the poster ──────────────────────────────
+    const cover = pptx.addSlide()
+    if (posterData) {
+      cover.addImage({
+        data: posterData,
+        x: 0, y: 0, w: 13.33, h: 7.5,
+        sizing: { type: 'cover', w: 13.33, h: 7.5 },
+      })
+    } else {
+      cover.background = { color: '001A33' }
+      cover.addText('MAKE A GROUFIE! 📸', {
+        x: 1, y: 2.5, w: 11.33, h: 1.5,
+        fontSize: 48, bold: true, color: 'FFFFFF', fontFace: 'Impact', align: 'center',
+      })
+    }
+
+    // ── GROUP SLIDES ──────────────────────────────────────────────────
+    setGenMsg('Building slides…')
     for (const entry of entries) {
       let imgData: string
       try {
-        const res = await fetch(entry.imageUrl)
-        const buf = await res.arrayBuffer()
-        const bytes = new Uint8Array(buf)
-        const b64 = btoa(Array.from(bytes, b => String.fromCharCode(b)).join(''))
-        const mime = entry.imageUrl.match(/\.png$/i) ? 'image/png' : 'image/jpeg'
-        imgData = `data:${mime};base64,${b64}`
+        imgData = await toDataUri(entry.imageUrl)
       } catch {
         imgData = entry.imageUrl
       }
 
       const slide = pptx.addSlide()
-      slide.background = { color: 'F7F7F6' }
+      slide.background = { color: '0A0A2E' }
 
+      // Top teal bar
       slide.addShape('rect' as any, {
-        x: 0, y: 0, w: 13.33, h: 0.72,
-        fill: { color: '1D3461' },
-        line: { color: '1D3461' },
+        x: 0, y: 0, w: 13.33, h: 1.0,
+        fill: { color: '00B4D8' }, line: { color: '00B4D8' },
+      })
+      // Green accent stripe
+      slide.addShape('rect' as any, {
+        x: 0, y: 0.9, w: 13.33, h: 0.12,
+        fill: { color: '00C851' }, line: { color: '00C851' },
       })
 
+      // Smiley badge
+      slide.addShape('ellipse' as any, {
+        x: 0.15, y: 0.1, w: 0.7, h: 0.7,
+        fill: { color: 'FFD700' }, line: { color: '007A33', width: 2 },
+      })
+      slide.addText('😊', {
+        x: 0.15, y: 0.1, w: 0.7, h: 0.7,
+        fontSize: 20, align: 'center', valign: 'middle', margin: 0,
+      })
+
+      // Title
+      slide.addText('MAKE A GROUFIE! 📸', {
+        x: 1.0, y: 0.08, w: 11.0, h: 0.48,
+        fontSize: 26, bold: true, color: 'FFFFFF',
+        fontFace: 'Impact', align: 'left', valign: 'middle', margin: 0,
+      })
+      slide.addText('The Funniest but Hungriest Accountability Group (AG)', {
+        x: 1.0, y: 0.56, w: 10.0, h: 0.3,
+        fontSize: 12, color: 'FFD700', fontFace: 'Calibri',
+        align: 'left', valign: 'middle', italic: true, margin: 0,
+      })
+
+      // Group name badge
+      slide.addShape('rect' as any, {
+        x: 0.4, y: 1.18, w: 8.5, h: 0.58,
+        fill: { color: '00C851' }, line: { color: '007A33', width: 2 },
+      })
       slide.addText(entry.group, {
-        x: 0.4, y: 0.1, w: 12.5, h: 0.52,
-        fontSize: 24, bold: true, color: 'FFFFFF', fontFace: 'Calibri',
-        valign: 'middle',
+        x: 0.4, y: 1.18, w: 8.5, h: 0.58,
+        fontSize: 24, bold: true, color: 'FFFFFF',
+        fontFace: 'Impact', align: 'center', valign: 'middle', margin: 0,
       })
 
+      // Group photo
       slide.addImage({
         data: imgData,
-        x: 1.2, y: 0.9, w: 10.93, h: 5.5,
-        sizing: { type: 'contain', w: 10.93, h: 5.5 },
+        x: 0.4, y: 1.88, w: 8.5, h: 5.1,
+        sizing: { type: 'contain', w: 8.5, h: 5.1 },
       })
 
-      const d = new Date(entry.date).toLocaleDateString('en-US', {
-        year: 'numeric', month: 'long', day: 'numeric',
+      // Right panel background
+      slide.addShape('rect' as any, {
+        x: 9.15, y: 1.18, w: 3.78, h: 5.8,
+        fill: { color: '0D1547' }, line: { color: '00B4D8', width: 2 },
       })
-      slide.addText(`Uploaded: ${d}`, {
-        x: 0.4, y: 6.85, w: 12.5, h: 0.25,
-        fontSize: 10, color: '999999', fontFace: 'Calibri',
+
+      // Right panel header
+      slide.addShape('rect' as any, {
+        x: 9.15, y: 1.18, w: 3.78, h: 0.65,
+        fill: { color: '00B4D8' }, line: { color: '00B4D8' },
+      })
+      slide.addText('HEAD OFFICE', {
+        x: 9.15, y: 1.2, w: 3.78, h: 0.3,
+        fontSize: 13, bold: true, color: 'FFFFFF',
+        fontFace: 'Arial Black', align: 'center', margin: 0,
+      })
+      slide.addText('CORPORATE FELLOWSHIP', {
+        x: 9.15, y: 1.5, w: 3.78, h: 0.28,
+        fontSize: 9, bold: true, color: 'FFD700',
+        fontFace: 'Calibri', align: 'center', margin: 0,
+      })
+
+      // Fun category cards
+      const cards = [
+        { emoji: '🍕', label: 'Best Food Pic' },
+        { emoji: '🍩', label: 'Most Creative' },
+        { emoji: '📚', label: 'Hustle Mode' },
+        { emoji: '☕', label: 'Coffee Addict' },
+        { emoji: '😂', label: 'Funniest AG' },
+      ]
+      cards.forEach((card, i) => {
+        const yPos = 2.05 + i * 0.92
+        slide.addShape('rect' as any, {
+          x: 9.35, y: yPos, w: 3.38, h: 0.75,
+          fill: { color: '152060' }, line: { color: '00B4D8', width: 1 },
+        })
+        slide.addText(card.emoji, {
+          x: 9.38, y: yPos + 0.05, w: 0.65, h: 0.65,
+          fontSize: 22, align: 'center', valign: 'middle', margin: 0,
+        })
+        slide.addText(card.label, {
+          x: 10.08, y: yPos + 0.1, w: 2.5, h: 0.55,
+          fontSize: 13, bold: true, color: 'FFFFFF',
+          fontFace: 'Calibri', align: 'left', valign: 'middle', margin: 0,
+        })
+      })
+
+      // Bottom footer
+      slide.addShape('rect' as any, {
+        x: 0, y: 6.95, w: 13.33, h: 0.55,
+        fill: { color: '00C851' }, line: { color: '00C851' },
+      })
+      slide.addText('Kabalikat para sa Maunlad na Buhay, Inc. (A Microfinance NGO)  🌿', {
+        x: 0.3, y: 6.95, w: 12.73, h: 0.55,
+        fontSize: 12, bold: true, color: 'FFFFFF',
+        fontFace: 'Calibri', align: 'center', valign: 'middle', margin: 0,
       })
     }
 
     setGenMsg('Downloading…')
-    await pptx.writeFile({ fileName: 'group-photos.pptx' })
-    setGenMsg(`✓ Downloaded group-photos.pptx (${entries.length} slides)`)
+    await pptx.writeFile({ fileName: 'groufie-photos.pptx' })
+    setGenMsg(`✓ Downloaded groufie-photos.pptx (${entries.length + 1} slides)`)
     setGenerating(false)
   }
 
-  const canSave = !!file && !!group.trim() && !saving
+
+    const canSave = !!file && !!group.trim() && !saving
 
   return (
     <div style={{ maxWidth: 720, margin: '0 auto', padding: '2rem 1rem' }}>
